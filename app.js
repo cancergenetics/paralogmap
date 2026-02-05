@@ -68,6 +68,10 @@ function formatP(value) {
   return num.toFixed(3);
 }
 
+function displayPairId(pairId) {
+  return pairId.replace(/__/g, "_");
+}
+
 function cellToText(cell) {
   if (cell instanceof Node) {
     return cell.getAttribute("data-value") || cell.textContent || "";
@@ -234,7 +238,8 @@ function createPairAnchor(pairId) {
   const link = document.createElement("a");
   link.className = "link";
   link.href = "#";
-  link.textContent = pairId;
+  link.textContent = displayPairId(pairId);
+  link.setAttribute("data-value", pairId);
   link.addEventListener("click", (event) => {
     event.preventDefault();
     setMode("pair", { skipSuggestions: true });
@@ -479,7 +484,7 @@ async function renderPair(pairId) {
   const info = document.createElement("div");
   info.className = "info";
   const label = document.createElement("strong");
-  label.textContent = `Pair: ${pairId}`;
+  label.textContent = `Pair: ${displayPairId(pairId)}`;
   info.appendChild(label);
 
   const [gene1, gene2] = pairId.split("__");
@@ -735,7 +740,7 @@ async function init() {
     state.suggestions.pair = pairs.map((entry) =>
       buildSuggestionEntry({
         value: entry.pair_id,
-        label: entry.pair_id,
+        label: displayPairId(entry.pair_id),
         aliases: [
           entry.pair_id,
           `${entry.gene1}_${entry.gene2}`,
