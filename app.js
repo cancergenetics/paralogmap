@@ -348,8 +348,14 @@ function buildDiseaseSelect() {
   });
 }
 
+const DATA_VERSION = "2026-02-05";
+
+function withVersion(path) {
+  return path.includes("?") ? `${path}&v=${DATA_VERSION}` : `${path}?v=${DATA_VERSION}`;
+}
+
 async function fetchJson(path) {
-  const res = await fetch(path);
+  const res = await fetch(withVersion(path));
   if (!res.ok) {
     throw new Error(`Failed to load ${path}`);
   }
