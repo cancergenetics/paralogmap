@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paralog Interaction Browser</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <h1>A Predicted Cancer Dependency Map for Paralog Pairs</h1>
+        <p>
+          Explore top-100 results across cell lines, gene pairs, and genes.
+        </p>
+      </header>
+
+      <main class="panel">
+        <section class="search">
+          <div class="search-header">
+            <button id="aboutBtn" class="about-btn" type="button">About</button>
+          </div>
+          <div id="aboutPanel" class="about-panel" hidden>
+            <p>
+              Predicted interaction scores summarize how strongly a paralog pair
+              is expected to show a synthetic lethal dependency in a given cell line.
+              Higher values indicate stronger predicted dependencies.
+            </p>
+            <p>
+              Differential z-scores show how unusually high a score is for a cell
+              line relative to the same pair across all cell lines, highlighting
+              cell-line-specific effects.
+            </p>
+            <p>
+              Disease-specific dependencies compare median pair scores in one
+              disease against all other diseases; pairs shown pass a median
+              difference threshold and a nominal Mann-Whitney U test (p&lt;0.05).
+            </p>
+          </div>
+          <div class="tabs" role="tablist" aria-label="Search modes">
+            <button class="tab active" data-mode="cell" role="tab">Cell line</button>
+            <button class="tab" data-mode="pair" role="tab">Gene pair</button>
+            <button class="tab" data-mode="gene" role="tab">Gene</button>
+            <button class="tab" data-mode="disease" role="tab">Disease</button>
+          </div>
+
+          <div id="diseaseSelectWrap" class="disease-select" hidden>
+            <label for="diseaseSelect">Choose disease</label>
+            <select id="diseaseSelect">
+              <option value="">Select a disease…</option>
+            </select>
+          </div>
+
+          <div id="searchRow" class="search-row">
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Search by alias or symbol"
+              autocomplete="off"
+            />
+            <button id="searchBtn">Search</button>
+          </div>
+          <div id="suggestions" class="suggestions" aria-live="polite"></div>
+        </section>
+
+        <section class="results">
+          <div id="status" class="status">Loading index files…</div>
+          <div id="results"></div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div>
+          Please cite as Kebabci et al, bioRxiv 2025 —
+          <a
+            href="https://www.biorxiv.org/content/10.64898/2026.01.19.700065v1"
+            target="_blank"
+            rel="noopener"
+            >paper link</a
+          >.
+        </div>
+        <div>
+          Scores are from the preprint
+          <em>A predicted cancer dependency map for paralog pairs</em>
+          (Narod Kebabci, Hamda Ajmal, David J. Adams, Colm J. Ryan).
+          <a
+            href="https://www.biorxiv.org/content/10.64898/2026.01.19.700065v1"
+            target="_blank"
+            rel="noopener"
+            >Read on bioRxiv</a
+          >.
+          Full dataset download:
+          <a
+            href="https://doi.org/10.6084/m9.figshare.31058182"
+            target="_blank"
+            rel="noopener"
+            >Figshare (DOI)</a
+          >.
+        </div>
+      </footer>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
