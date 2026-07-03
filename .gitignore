@@ -1,3 +1,11 @@
+# Large input data (not committed; see README)
 full_SLprediction_matrix.csv
 Model.csv
+
+# Build scratch space
 dist/_tmp/
+
+# OS / Python cruft
+.DS_Store
+__pycache__/
+*.pyc

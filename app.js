@@ -348,7 +348,7 @@ function buildDiseaseSelect() {
   });
 }
 
-const DATA_VERSION = "2026-02-05";
+const DATA_VERSION = "2026-07-03";
 
 function withVersion(path) {
   return path.includes("?") ? `${path}&v=${DATA_VERSION}` : `${path}?v=${DATA_VERSION}`;
@@ -595,23 +595,25 @@ async function renderDisease(disease) {
     renderSection(
       "Disease-specific paralog pair dependencies",
       null,
-      ["Pair", "Median (disease)", "Median (other)", "Diff", "P-value"],
+      ["Pair", "Mean (disease)", "Mean (other)", "Diff", "P-value", "FDR (q-value)"],
       list.map((item) => [
         createPairAnchor(item.pair_id),
-        formatScore(item.median_disease),
-        formatScore(item.median_other),
+        formatScore(item.mean_disease),
+        formatScore(item.mean_other),
         formatScore(item.diff),
         formatP(item.p_value),
+        formatP(item.q_value),
       ]),
       {
         filename: `${disease.replace(/\\s+/g, "_")}_disease_pairs.csv`,
-        headers: ["pair_id", "median_disease", "median_other", "diff", "p_value"],
+        headers: ["pair_id", "mean_disease", "mean_other", "diff", "p_value", "q_value"],
         rows: list.map((item) => [
           item.pair_id,
-          item.median_disease,
-          item.median_other,
+          item.mean_disease,
+          item.mean_other,
           item.diff,
           item.p_value,
+          item.q_value,
         ]),
       }
     )

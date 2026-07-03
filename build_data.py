@@ -19,6 +19,7 @@ import hashlib
 import json
 import math
 import os
+import warnings
 from collections import defaultdict
 import heapq
 from pathlib import Path
@@ -137,52 +138,57 @@ def write_json(path: Path, payload) -> None:
         json.dump(payload, f, separators=(",", ":"))
 
 
-def rankdata(values: np.ndarray) -> np.ndarray:
-    order = np.argsort(values, kind="mergesort")
-    ranks = np.empty_like(order, dtype=np.float64)
-    n = len(values)
-    i = 0
-    while i < n:
-        j = i
-        while j + 1 < n and values[order[j + 1]] == values[order[i]]:
-            j += 1
-        avg_rank = (i + j + 2) / 2.0
-        ranks[order[i : j + 1]] = avg_rank
-        i = j + 1
-    return ranks
-
-
-def mann_whitney_pvalue(x: np.ndarray, y: np.ndarray) -> float:
+def welch_t_pvalue(x: np.ndarray, y: np.ndarray) -> float:
+    """Two-sided Welch's t-test (unequal variances) p-value."""
     try:
-        from scipy.stats import mannwhitneyu
+        from scipy.stats import ttest_ind
 
-        result = mannwhitneyu(x, y, alternative="two-sided")
-        return float(result.pvalue)
+        result = ttest_ind(x, y, equal_var=False, alternative="two-sided")
+        p = float(result.pvalue)
+        return p if math.isfinite(p) else 1.0
     except Exception:
         pass
 
     n1 = x.size
     n2 = y.size
-    if n1 == 0 or n2 == 0:
+    if n1 < 2 or n2 < 2:
         return 1.0
-    data = np.concatenate([x, y])
-    ranks = rankdata(data)
-    r1 = ranks[:n1].sum()
-    u1 = r1 - n1 * (n1 + 1) / 2.0
-    u2 = n1 * n2 - u1
-    u = min(u1, u2)
-    mean_u = n1 * n2 / 2.0
-    _, counts = np.unique(data, return_counts=True)
-    tie_term = np.sum(counts**3 - counts)
-    denom = (n1 + n2) * (n1 + n2 - 1)
-    if denom == 0:
+    m1 = float(x.mean())
+    m2 = float(y.mean())
+    v1 = float(x.var(ddof=1))
+    v2 = float(y.var(ddof=1))
+    se1 = v1 / n1
+    se2 = v2 / n2
+    denom = se1 + se2
+    if denom <= 0:
         return 1.0
-    var_u = n1 * n2 / 12.0 * ((n1 + n2 + 1) - (tie_term / denom))
-    if var_u <= 0:
-        return 1.0
-    z = (u - mean_u) / math.sqrt(var_u)
-    p = math.erfc(abs(z) / math.sqrt(2))
-    return float(p)
+    t = (m1 - m2) / math.sqrt(denom)
+    # Welch–Satterthwaite degrees of freedom
+    df = denom**2 / (se1**2 / (n1 - 1) + se2**2 / (n2 - 1))
+    try:
+        from scipy.stats import t as t_dist
+
+        return float(2.0 * t_dist.sf(abs(t), df))
+    except Exception:
+        # Normal approximation fallback when scipy is unavailable
+        return float(math.erfc(abs(t) / math.sqrt(2)))
+
+
+def benjamini_hochberg(pvalues: List[float]) -> np.ndarray:
+    """Return BH-adjusted p-values (q-values) for a list of p-values."""
+    n = len(pvalues)
+    if n == 0:
+        return np.array([], dtype=np.float64)
+    p = np.asarray(pvalues, dtype=np.float64)
+    order = np.argsort(p)
+    ranked = p[order]
+    q = ranked * n / np.arange(1, n + 1)
+    # Enforce monotonicity from the largest p-value downward
+    q = np.minimum.accumulate(q[::-1])[::-1]
+    q = np.clip(q, 0.0, 1.0)
+    out = np.empty(n, dtype=np.float64)
+    out[order] = q
+    return out
 
 
 def main() -> None:
@@ -474,28 +480,46 @@ def main() -> None:
             valid_b = np.isfinite(group_b).any(axis=0)
             valid_cols = valid_a & valid_b
 
-            median_a = np.nanmedian(group_a, axis=0)
-            median_b = np.nanmedian(group_b, axis=0)
-            diff = median_a - median_b
+            # Columns where a group is entirely NaN yield an (ignored) empty-slice
+            # warning; the resulting NaN diff simply fails the effect-size filter.
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                mean_a = np.nanmean(group_a, axis=0)
+                mean_b = np.nanmean(group_b, axis=0)
+            diff = mean_a - mean_b
 
-            candidates = np.where((diff > 0.1) & pair_active_mask & valid_cols)[0]
-            results = []
-            for i in candidates:
+            # Test every active/valid pair with Welch's t-test, then apply a
+            # Benjamini–Hochberg FDR correction across that full family of tests
+            # before filtering on effect size and FDR.
+            tested = np.where(pair_active_mask & valid_cols)[0]
+            tested_cols = []
+            p_values = []
+            for i in tested:
                 x = data[idx_a, i]
                 y = data[idx_b, i]
                 x = x[np.isfinite(x)]
                 y = y[np.isfinite(y)]
                 if x.size < 2 or y.size < 2:
                     continue
-                p_val = mann_whitney_pvalue(x, y)
-                if p_val < 0.05:
+                p_val = welch_t_pvalue(x, y)
+                tested_cols.append(int(i))
+                p_values.append(p_val)
+
+            q_values = benjamini_hochberg(p_values)
+
+            results = []
+            for col, p_val, q_val in zip(tested_cols, p_values, q_values):
+                # Disease-associated: mean difference > 0.1 (higher in the
+                # disease models) and BH-estimated FDR < 20%.
+                if diff[col] > 0.1 and q_val < 0.20:
                     results.append(
                         {
-                            "pair_id": pair_ids[i],
-                            "median_disease": float(median_a[i]),
-                            "median_other": float(median_b[i]),
-                            "diff": float(diff[i]),
+                            "pair_id": pair_ids[col],
+                            "mean_disease": float(mean_a[col]),
+                            "mean_other": float(mean_b[col]),
+                            "diff": float(diff[col]),
                             "p_value": float(p_val),
+                            "q_value": float(q_val),
                         }
                     )
 

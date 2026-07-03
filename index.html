@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Paralog Interaction Browser</title>
-    <link rel="stylesheet" href="styles.css?v=5" />
+    <link rel="stylesheet" href="styles.css?v=6" />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
@@ -36,9 +36,12 @@
               cell-line-specific effects.
             </p>
             <p>
-              Disease-specific dependencies compare median pair scores in one
-              disease against all other diseases; pairs shown pass a median
-              difference threshold and a nominal Mann-Whitney U test (p&lt;0.05).
+              Disease-specific dependencies compare mean pair scores in cell
+              lines of one disease against all other cell lines. Pairs shown are
+              higher in the disease (mean prediction-score difference &gt; 0.1)
+              and significant by a two-sided Welch's t-test after
+              Benjamini-Hochberg correction (FDR &lt; 20%). The estimated FDR
+              (q-value) is reported for each pair.
             </p>
           </div>
           <div class="tabs" role="tablist" aria-label="Search modes">
@@ -103,6 +106,6 @@
       </footer>
     </div>
 
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
   </body>
 </html>
